@@ -1,18 +1,3 @@
-//objectTrackingTutorial.cpp
-
-//Written by  Kyle Hounslow 2013
-
-//Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software")
-//, to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
-//and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-//The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-//THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-//FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-//LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-//IN THE SOFTWARE.
-
 #include <sstream>
 #include <string>
 #include <iostream>
@@ -42,15 +27,18 @@ const string windowName1 = "HSV Image";
 const string windowName2 = "Thresholded Image";
 const string windowName3 = "After Morphological Operations";
 const string trackbarWindowName = "Trackbars";
+
 void on_trackbar(int, void*)
 {//This function gets called whenever a
 	// trackbar position is changed
 }
+
 string intToString(int number){
 	std::stringstream ss;
 	ss << number;
 	return ss.str();
 }
+
 void createTrackbars(){
 	//create window for trackbars
 	namedWindow(trackbarWindowName, 0);
@@ -74,6 +62,7 @@ void createTrackbars(){
 	createTrackbar("V_MIN", trackbarWindowName, &V_MIN, V_MAX, on_trackbar);
 	createTrackbar("V_MAX", trackbarWindowName, &V_MAX, V_MAX, on_trackbar);
 }
+
 void drawObject(int x, int y, Mat &frame){
 	//added 'if' and 'else' statements to prevent
 	//memory errors from writing off the screen (ie. (-25,-25) is not within the window!)
@@ -96,8 +85,8 @@ void drawObject(int x, int y, Mat &frame){
 		line(frame, Point(x, y), Point(FRAME_WIDTH, y), Scalar(0, 255, 0), 2);
 
 	putText(frame, intToString(x) + "," + intToString(y), Point(x, y + 30), 1, 1, Scalar(0, 255, 0), 2);
-
 }
+
 void morphOps(Mat &thresh){
 
 	//create structuring element that will be used to "dilate" and "erode" image.
@@ -113,9 +102,19 @@ void morphOps(Mat &thresh){
 	dilate(thresh, thresh, dilateElement);
 	dilate(thresh, thresh, dilateElement);
 }
-void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed){
+
+
+/**
+*	Purpose: to track the object inside the camera feed and draw a rectangle around the entire object
+*
+*	Return:  returns the area of the largest object that is being tracked for depth calculation
+**/
+int trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed){
 	Mat temp;
 	threshold.copyTo(temp);
+	//area of largest object found
+	int area = -1; 
+
 	//these two vectors needed for output of findContours
 	vector< vector<Point> > contours;
 	vector<Vec4i> hierarchy;
@@ -152,13 +151,33 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed){
 				putText(cameraFeed, trackingString, Point(0, 50), 2, 1, Scalar(0, 255, 0), 2);
 				//draw object location on screen
 				drawObject(x, y, cameraFeed);
+
+				//approximate contours to the polygon
+				vector<vector<Point>> contours_poly(contours.size());
+				vector<Rect> boundRect (contours.size());
+				for(int i = 0; i < contours.size(); i++) {
+					approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+					boundRect[i] = boundingRect(Mat(contours_poly[i]));			
+				}
+				
+				//draws the largest polygon onto the camera feed
+				area = boundRect[0].width*boundRect[0].height;
+				for(int i = 1; i < contours.size(); i++) {
+					if (boundRect[i].width*boundRect[i].height > area) {
+						rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);					
+						area = boundRect[i].width*boundRect[i].height;
+					}
+				}
+				std::cout << "area of largest object: " << area << std::endl;
 			}
 			else {
 				putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
 			}
 		}
 	}
+	return area;
 }
+
 int main(int argc, char* argv[])
 {
 	//Matrix to store each frame of the webcam feed
@@ -205,7 +224,7 @@ int main(int argc, char* argv[])
 		//pass in thresholded frame to our object tracking function
 		//this function will return the x and y coordinates of the
 		//filtered object
-		trackFilteredObject(x, y, threshold, cameraFeed);
+		int trackedObjectArea = trackFilteredObject(x, y, threshold, cameraFeed);
 
 		//show frames 
 		imshow(windowName2, threshold);
