@@ -1,2 +1,2 @@
 # BeerMeCopter
-This is for all the lazy alcoholics out there who always need their beer by their side. 
+This is for all the lazy beer drinkers out there who always need their beer by their side. 
