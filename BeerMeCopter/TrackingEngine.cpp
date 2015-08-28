@@ -1,15 +1,20 @@
+// test1.cpp : Defines the entry point for the console application.
+//
+
+#include "stdafx.h"
 #include <sstream>
 #include <string>
 #include <iostream>
 #include <opencv\highgui.h>
 #include <opencv\cv.h>
+#include<Windows.h> // for sleep
 
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
-int H_MIN = 0;
-int H_MAX = 256;
-int S_MIN = 0;
+int H_MIN = 56;
+int H_MAX = 173;
+int S_MIN = 56;
 int S_MAX = 256;
 int V_MIN = 0;
 int V_MAX = 256;
@@ -109,72 +114,85 @@ void morphOps(Mat &thresh){
 *
 *	Return:  returns the area of the largest object that is being tracked for depth calculation
 **/
-int trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed){
+
+bool objectFound(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy){
+	bool found = false;
+	double refArea = 0;
+
+	for(int i = 0; i >=0; i = hierarchy[i][0]){
+		Moments moment = moments ((cv::Mat)contours[i]);
+		double area = moment.m00;
+
+		//if the area is less than 20 px by 20px then it is probably just noise
+		//if the area is the same as the 3/2 of the image size, probably just a bad filter
+		//we only want the object with the largest area so we safe a reference area each
+		//iteration and compare it to the area in the next iteration.
+		if(area > MIN_OBJECT_AREA && area < MAX_OBJECT_AREA && area > refArea) {
+			x = moment.m10 / area;
+			y = moment.m01 / area;
+			found = true;
+			refArea = area;
+		} else 
+			found = false;
+	}
+
+	return found;
+}
+
+int getAreaOfLargestObject(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &contours ){
+	//approximate contours to the polygon
+	vector<vector<Point>> contours_poly(contours.size());
+	vector<Rect> boundRect (contours.size());
+	for(int i = 0; i < contours.size(); ++i) {
+		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
+		boundRect[i] = boundingRect(Mat(contours_poly[i]));
+	}
+	
+	int area = boundRect[0].area();
+	for(int i = 1; i < contours.size(); ++i)
+		if (boundRect[i].area() > area){
+			rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
+			area = boundRect[i].area();
+		}
+
+	std::cout << "area of largest object: " << area << std::endl;
+
+	return area;
+}
+
+void findFilteredObjects(int &x, int &y, int &area, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, Mat &cameraFeed) {
+	if(objectFound(x, y, contours, hierarchy)) {
+		char* trackingString = "Tracking Object";
+		putText(cameraFeed, trackingString, Point(0,50), 2, 1, Scalar(0, 255, 0), 2);
+
+		//draw object location on screen
+		drawObject(x, y, cameraFeed);
+
+		//calculate the area of the largest tracked object
+		area = getAreaOfLargestObject(x, y, cameraFeed, contours);
+	} 
+	else {
+		putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
+	}
+}
+
+int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	Mat temp;
 	threshold.copyTo(temp);
 	//area of largest object found
-	int area = -1; 
+	int area = 0; // I changed this to 0 because an object of area 0 doesn't exist
 
 	//these two vectors needed for output of findContours
 	vector< vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	//find contours of filtered image using openCV findContours function
 	findContours(temp, contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
 	//use moments method to find our filtered object
-	double refArea = 0;
-	bool objectFound = false;
-	if (hierarchy.size() > 0) {
-		int numObjects = hierarchy.size();
-		//if number of objects greater than MAX_NUM_OBJECTS we have a noisy filter
-		if (numObjects<MAX_NUM_OBJECTS){
-			for (int index = 0; index >= 0; index = hierarchy[index][0]) {
-				Moments moment = moments((cv::Mat)contours[index]);
-				double area = moment.m00;
+	int size = hierarchy.size();
+	if (size && size < MAX_NUM_OBJECTS) 
+		findFilteredObjects(x, y, area, contours, hierarchy, cameraFeed);
 
-				//if the area is less than 20 px by 20px then it is probably just noise
-				//if the area is the same as the 3/2 of the image size, probably just a bad filter
-				//we only want the object with the largest area so we safe a reference area each
-				//iteration and compare it to the area in the next iteration.
-				if (area>MIN_OBJECT_AREA && area<MAX_OBJECT_AREA && area>refArea){
-					x = moment.m10 / area;
-					y = moment.m01 / area;
-					objectFound = true;
-					refArea = area;
-				}
-				else {
-					objectFound = false;
-				}
-			}
-			//let user know you found an object
-			if (objectFound){
-				char* trackingString = "Tracking Object";
-				putText(cameraFeed, trackingString, Point(0, 50), 2, 1, Scalar(0, 255, 0), 2);
-				//draw object location on screen
-				drawObject(x, y, cameraFeed);
-
-				//approximate contours to the polygon
-				vector<vector<Point>> contours_poly(contours.size());
-				vector<Rect> boundRect (contours.size());
-				for(int i = 0; i < contours.size(); i++) {
-					approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-					boundRect[i] = boundingRect(Mat(contours_poly[i]));			
-				}
-				
-				//draws the largest polygon onto the camera feed
-				area = boundRect[0].width*boundRect[0].height;
-				for(int i = 1; i < contours.size(); i++) {
-					if (boundRect[i].width*boundRect[i].height > area) {
-						rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);					
-						area = boundRect[i].width*boundRect[i].height;
-					}
-				}
-				std::cout << "area of largest object: " << area << std::endl;
-			}
-			else {
-				putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
-			}
-		}
-	}
 	return area;
 }
 
@@ -200,6 +218,7 @@ int main(int argc, char* argv[])
 	
 	//open capture object at location zero (default location for webcam)
 	capture.open(0);
+	Sleep(1000); // Jon's camera takes a while to load
 	
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
@@ -237,3 +256,4 @@ int main(int argc, char* argv[])
 	}
 	return 0;
 }
+
