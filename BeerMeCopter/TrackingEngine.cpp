@@ -1,11 +1,13 @@
 // test1.cpp : Defines the entry point for the console application.
 //
 
+
 #include <sstream>
 #include <string>
 #include <iostream>
 #include <opencv\highgui.h>
 #include <opencv\cv.h>
+
 
 using namespace cv;
 //initial min and max HSV filter values.
