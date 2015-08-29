@@ -1,13 +1,12 @@
 // test1.cpp : Defines the entry point for the console application.
 //
 
-
 #include <sstream>
 #include <string>
 #include <iostream>
 #include <opencv\highgui.h>
 #include <opencv\cv.h>
-
+//#include<Windows.h> // TODO: remove for pi
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -218,6 +217,7 @@ int main(int argc, char* argv[])
 	
 	//open capture object at location zero (default location for webcam)
 	capture.open(0);
+	//Sleep(1000); // Jon's camera takes a while to load
 	
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
