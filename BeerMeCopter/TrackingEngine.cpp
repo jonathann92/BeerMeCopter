@@ -1,6 +1,3 @@
-// test1.cpp : Defines the entry point for the console application.
-//
-
 #include <sstream>
 #include <string>
 #include <iostream>
