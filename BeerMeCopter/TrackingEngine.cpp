@@ -172,8 +172,8 @@ int drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &cont
 	*/
 }
 
-void findFilteredObjects(int &x, int &y, int &area, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, Mat &cameraFeed) {
-	int largestObject;
+int findFilteredObjects(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, Mat &cameraFeed) {
+	int largestObject, area = 0;
 	if(objectFound(x, y, contours, hierarchy, largestObject)) {
 		char* trackingString = "Tracking Object";
 		putText(cameraFeed, trackingString, Point(0,50), 2, 1, Scalar(0, 255, 0), 2);
@@ -187,13 +187,15 @@ void findFilteredObjects(int &x, int &y, int &area, vector< vector<Point> > &con
 	else {
 		putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
 	}
+
+	return area;
 }
 
 int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	Mat temp;
 	threshold.copyTo(temp);
 	//area of largest object found
-	int area = 0; // I changed this to 0 because an object of area 0 doesn't exist
+	//int area = 0; // I changed this to 0 because an object of area 0 doesn't exist
 
 	//these two vectors needed for output of findContours
 	vector< vector<Point> > contours;
@@ -204,9 +206,9 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	//use moments method to find our filtered object
 	int size = hierarchy.size();
 	if (size && size < MAX_NUM_OBJECTS) 
-		findFilteredObjects(x, y, area, contours, hierarchy, cameraFeed);
-
-	return area;
+		return findFilteredObjects(x, y, contours, hierarchy, cameraFeed);
+	else
+		return 0;
 }
 
 int main(int argc, char* argv[])
