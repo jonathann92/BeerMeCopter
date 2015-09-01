@@ -1,12 +1,6 @@
 #include <sstream>
 #include <string>
 #include <iostream>
-
-/* For Windows */
-//#include <opencv\highgui.h>
-//#include <opencv\cv.h>
-
-/* For Linux */
 #include <opencv/highgui.h>
 #include <opencv/cv.h>
 
@@ -212,8 +206,8 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	int size = hierarchy.size();
 	if (size && size < MAX_NUM_OBJECTS) 
 		return findFilteredObjects(x, y, contours, hierarchy, cameraFeed);
-	else
-		return 0;
+
+	return 0;
 }
 
 int main(int argc, char* argv[])
@@ -238,7 +232,7 @@ int main(int argc, char* argv[])
 	
 	//open capture object at location zero (default location for webcam)
 	capture.open(0);
-	
+		
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
