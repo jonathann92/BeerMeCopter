@@ -1,5 +1,5 @@
 #include <sstream>
-
+// Testing for OS X
 #include <string>
 #include <iostream>
 #include <opencv\highgui.h>
