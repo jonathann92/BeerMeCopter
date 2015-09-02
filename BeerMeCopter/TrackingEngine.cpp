@@ -258,7 +258,7 @@ int main(int argc, char* argv[])
 		//show frames 
 		imshow(windowName2, threshold);
 		imshow(windowName, cameraFeed);
-		imshow(windowName1, HSV);
+		//imshow(windowName1, HSV);
 
 		//delay 30ms so that screen can refresh.
 		//image will not appear without this waitKey() command
