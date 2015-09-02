@@ -1,5 +1,4 @@
 #include <sstream>
-// Testing for OS X
 #include <string>
 #include <iostream>
 #include <opencv\highgui.h>
@@ -160,12 +159,9 @@ int drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &cont
 		boundRect[i] = boundingRect(Mat(contours_poly[i]));
 	}
 	
-	int area = boundRect[0].area();
+	int area = boundRect[largestObject].area();
 	for(int i = 1; i < contours.size(); ++i)
-		if (boundRect[i].area() > area){
-			rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
-			area = boundRect[i].area();
-		}
+		rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
 
 	std::cout << "area of largest object: " << area << std::endl;
 
