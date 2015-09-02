@@ -1,9 +1,8 @@
 #include <sstream>
 #include <string>
 #include <iostream>
-#include <opencv\highgui.h>
-#include <opencv\cv.h>
-//#include<Windows.h> // TODO: remove for pi
+#include <opencv/highgui.h>
+#include <opencv/cv.h>
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -204,8 +203,8 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	int size = hierarchy.size();
 	if (size && size < MAX_NUM_OBJECTS) 
 		return findFilteredObjects(x, y, contours, hierarchy, cameraFeed);
-	else
-		return 0;
+
+	return 0;
 }
 
 int main(int argc, char* argv[])
@@ -230,8 +229,7 @@ int main(int argc, char* argv[])
 	
 	//open capture object at location zero (default location for webcam)
 	capture.open(0);
-	//Sleep(1000); // Jon's camera takes a while to load
-	
+		
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
