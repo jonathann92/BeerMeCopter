@@ -16,6 +16,9 @@ int V_MAX = 256;
 //default capture width and height
 const int FRAME_WIDTH = 640;
 const int FRAME_HEIGHT = 480;
+//values for location of lines
+const int CENTER = FRAME_WIDTH/2 + 1;
+const int deltaCenter = 120;
 //max number of objects to be detected in frame
 const int MAX_NUM_OBJECTS = 50;
 //minimum and maximum object area
@@ -37,6 +40,12 @@ string intToString(int number){
 	std::stringstream ss;
 	ss << number;
 	return ss.str();
+}
+
+void drawLines(Mat &frame) {
+    line(frame, Point(CENTER, FRAME_HEIGHT), Point(CENTER, 0), Scalar(255, 0, 0), 2);
+    line(frame, Point(CENTER - deltaCenter, FRAME_HEIGHT), Point(CENTER - deltaCenter, 0), Scalar(0, 0, 255), 2);
+    line(frame, Point(CENTER + deltaCenter, FRAME_HEIGHT), Point(CENTER + deltaCenter, 0), Scalar(0, 0, 255), 2);
 }
 
 void createTrackbars(){
@@ -245,6 +254,9 @@ int main(int argc, char* argv[])
 		//this function will return the x and y coordinates of the
 		//filtered object
 		int trackedObjectArea = trackFilteredObject(x, y, threshold, cameraFeed);
+        
+        //draw center line and threshold lines
+        drawLines(cameraFeed);
 
 		//show frames 
 		imshow(windowName2, threshold);
