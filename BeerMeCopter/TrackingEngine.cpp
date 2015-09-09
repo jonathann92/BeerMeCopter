@@ -110,8 +110,7 @@ void morphOps(Mat &thresh){
 *	Return:  returns the area of the largest object that is being tracked for depth calculation
 **/
 
-bool objectFound(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, int &largestObject){
-	bool found = false;
+double objectFound(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, int &largestObject){
 	double refArea = 0;
 	largestObject = 0;
 
@@ -126,17 +125,16 @@ bool objectFound(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i
 		if(area > MIN_OBJECT_AREA && area < MAX_OBJECT_AREA && area > refArea) {
 			x = moment.m10 / area;
 			y = moment.m01 / area;
-			found = true;
 			refArea = area;
 			largestObject = i;
 		} else 
-			found = false;
+			refArea = 0;
 	}
 
-	return found;
+    return refArea;
 }
 
-int drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &contours, int &largestObject ){
+void drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &contours, int &largestObject ){
 	//aproximate contours to the polygon
 	vector<Point> contours_poly;
 	Rect boundRect;
@@ -145,9 +143,7 @@ int drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &cont
 	//draws rectangle around largest object
 	rectangle(cameraFeed, boundRect.tl(), boundRect.br(), Scalar(0, 255, 0), 2, 8, 0);
 
-	std::cout << "area of largest object: " << boundRect.area() << std::endl;
 
-	return boundRect.area();
 	
 	/* Draws rectangle around all detected objects
 	//approximate contours to the polygon
@@ -156,29 +152,24 @@ int drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &cont
 	for(int i = 0; i < contours.size(); ++i) {
 		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
 		boundRect[i] = boundingRect(Mat(contours_poly[i]));
-	}
-	
-	int area = boundRect[largestObject].area();
-	for(int i = 1; i < contours.size(); ++i)
 		rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
-
-	std::cout << "area of largest object: " << area << std::endl;
-
-	return area;
+	}
 	*/
 }
 
 int findFilteredObjects(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, Mat &cameraFeed) {
-	int largestObject, area = 0;
-	if(objectFound(x, y, contours, hierarchy, largestObject)) {
+	int largestObject = -1;
+    double area;
+	if(area = objectFound(x, y, contours, hierarchy, largestObject)) {
 		char* trackingString = "Tracking Object";
 		putText(cameraFeed, trackingString, Point(0,50), 2, 1, Scalar(0, 255, 0), 2);
+        std::cout << "area of largest object: " << area << std::endl;
 
 		//draw object location on screen
 		drawObject(x, y, cameraFeed);
 
 		//calculate the area of the largest tracked object
-		area = drawRectangle(x, y, cameraFeed, contours, largestObject);
+		drawRectangle(x, y, cameraFeed, contours, largestObject);
 	} 
 	else {
 		putText(cameraFeed, "TOO MUCH NOISE! ADJUST FILTER", Point(0, 50), 1, 2, Scalar(0, 0, 255), 2);
