@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 project( BeerMeCopter )
 find_package( OpenCV REQUIRED )
+find_package (Threads REQUIRED)
 add_executable( TrackingEngine TrackingEngine.cpp )
-target_link_libraries( TrackingEngine ${OpenCV_LIBS} )
+target_link_libraries( TrackingEngine ${OpenCV_LIBS} ${CMAKE_THREAD_LIBS_INIT} )
