@@ -5,7 +5,7 @@
 #include <opencv/cv.h>
 #include <pthread.h>
 #include <unistd.h>
-#define NUM_THREADS 5
+#define NUM_THREADS 3
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -223,14 +223,6 @@ void error(string msg, int err){
     exit(-1);
 }
 
-void setGlobalFrames(Mat cameraFeed, Mat HSV, Mat threshold){
-    //pthread_mutex_lock(&fmutex);
-    cameraFeed_G = cameraFeed;
-    HSV_G = HSV;
-    threshold_G = threshold;
-    //pthread_mutex_unlock(&fmutex);
-}
-
 void *TrackObject(void *args){
     VideoCapture *capture;
     capture = (VideoCapture*)args;
@@ -272,8 +264,13 @@ void *TrackObject(void *args){
         //filtered object
         int trackedObjectArea = trackFilteredObject(x, y, threshold, cameraFeed);
         
-        setGlobalFrames(cameraFeed, HSV, threshold);
-        
+	pthread_mutex_lock(&fmutex);
+        imshow(windowName2, threshold);
+        drawLines(cameraFeed);
+        imshow(windowName, cameraFeed);
+       //imshow(windowName1, HSV);
+	waitKey(30);
+	pthread_mutex_unlock(&fmutex);
     }
     pthread_exit(NULL);
 }
@@ -300,21 +297,12 @@ int main(int argc, char* argv[])
     pthread_mutex_init(&cmutex, NULL);
     pthread_mutex_init(&fmutex, NULL);
     
-    for(int i = 0; i < 5; ++i){
+    for(int i = 0; i < NUM_THREADS; ++i){
         int rc = pthread_create(&threadid[i], NULL, TrackObject, (void *)&capture);
         if(rc)
             error("pthread_create", rc);
     }
-    
-    sleep(2); // sleep so threads can fill global frames
-    while(1){
-        imshow(windowName2, threshold_G);
-        drawLines(cameraFeed_G);
-        imshow(windowName, cameraFeed_G);
-        imshow(windowName1, HSV_G);
-        
-        waitKey(30);
-    }
+
     
     for(int i =0; i < NUM_THREADS; ++i){
         int rc = pthread_join(threadid[i], NULL);
