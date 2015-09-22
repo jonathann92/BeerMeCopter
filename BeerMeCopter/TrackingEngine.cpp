@@ -235,7 +235,10 @@ void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int seconds){
     time_t start, end;
     
     for(time(&start), time(&end); difftime (end,start) < seconds; time(&end)){
-        feed.read(image);
+        if(!feed.read(image)){
+            std::cout << "Cannot read from camera in waitForObject\n";
+            continue;
+        }
         rectangle(image, detectionRectangle.tl(), detectionRectangle.br(), Scalar(0, 255, 0), 2, 8, 0);
         std::ostringstream oss;
         oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start) << " Seconds";
@@ -254,7 +257,7 @@ void setHSV(VideoCapture &feed){
     waitForObject(feed, detectionRectangle, 5);
     
     //we will use this image to set HSV values
-    feed.read(image);
+    while(!feed.read(image)) std::cout << "Cannot read from camera in setHSV\n";
     std::cout << "Got image, now finding HSV values" << std::endl;
     
     //Creates a rectangle of the area we only want to look at in the image
@@ -282,6 +285,10 @@ int main(int argc, char* argv[])
 	
 	//video capture object to acquire webcam feed
 	VideoCapture capture(0);
+    if(!capture.isOpened()){
+        std::cout << "Err: cannot open camera\n";
+        return -1;
+    }
     
     //set height and width of capture frame
     capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
@@ -292,14 +299,15 @@ int main(int argc, char* argv[])
     
     //create slider bars for HSV filtering
     createTrackbars();
-		
 
-    
 	//start an infinite loop where webcam feed is copied to cameraFeed matrix
 	//all of our operations will be performed within this loop
 	while (1){
 		//store image to matrix
-		capture.read(cameraFeed);
+        if(!capture.read(cameraFeed)){
+            std::cout << "Cannot read camera in main\n";
+            continue;
+        }
 		
 		//convert frame from BGR to HSV colorspace
 		cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
