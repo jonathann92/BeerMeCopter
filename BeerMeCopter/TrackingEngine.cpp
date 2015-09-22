@@ -5,9 +5,6 @@
 #include <opencv/cv.h>
 #include <time.h>
 
-    Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
-
-
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
@@ -53,8 +50,8 @@ void drawLines(Mat &frame) {
     line(frame, Point(CENTER_WIDTH - deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH - deltaCenterX, 0), Scalar(0, 0, 255), 2);
     line(frame, Point(CENTER_WIDTH + deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH + deltaCenterX, 0), Scalar(0, 0, 255), 2);
 	//horizontal lines
-    line(frame, Point(CENTER_HEIGHT - deltaCenterY, FRAME_WIDTH), Point(CENTER_HEIGHT - deltaCenterY, 0), Scalar(0, 0, 255), 2);
-    line(frame, Point(CENTER_HEIGHT + deltaCenterY, FRAME_WIDTH), Point(CENTER_HEIGHT + deltaCenterY, 0), Scalar(0, 0, 255), 2);	
+    line(frame, Point(FRAME_WIDTH, CENTER_HEIGHT - deltaCenterY), Point(0, CENTER_HEIGHT - deltaCenterY), Scalar(0, 255, 255), 2);
+    line(frame, Point(FRAME_WIDTH, CENTER_HEIGHT + deltaCenterY), Point(0, CENTER_HEIGHT + deltaCenterY), Scalar(0, 255, 255), 2);
 }
 
 void createTrackbars(){
@@ -205,7 +202,7 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	return 0;
 }
 
-void compareValues(int &value, int &min, int &max){
+void compareValues(int value, int &min, int &max){
     if(value > max)
         max = value;
     if(value < min)
@@ -233,7 +230,7 @@ void CompareHSV(Mat &HSV){
     V_MAX = v_max;
 }
 
-void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int &seconds){
+void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int seconds){
     Mat image;
     time_t start, end;
     
@@ -241,7 +238,7 @@ void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int &seconds){
         feed.read(image);
         rectangle(image, detectionRectangle.tl(), detectionRectangle.br(), Scalar(0, 255, 0), 2, 8, 0);
         std::ostringstream oss;
-        oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start); << " Seconds";
+        oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start) << " Seconds";
         putText(image, oss.str() , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
         imshow(windowName, image);
     }
