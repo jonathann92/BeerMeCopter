@@ -3,6 +3,7 @@
 #include <iostream>
 #include <opencv/highgui.h>
 #include <opencv/cv.h>
+#include <time.h>
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -49,27 +50,27 @@ void drawLines(Mat &frame) {
 }
 
 void createTrackbars(){
-	//create window for trackbars
-	namedWindow(trackbarWindowName, 0);
-	//create memory to store trackbar name on window
-	char TrackbarName[50];
-	sprintf(TrackbarName, "H_MIN", H_MIN);
-	sprintf(TrackbarName, "H_MAX", H_MAX);
-	sprintf(TrackbarName, "S_MIN", S_MIN);
-	sprintf(TrackbarName, "S_MAX", S_MAX);
-	sprintf(TrackbarName, "V_MIN", V_MIN);
-	sprintf(TrackbarName, "V_MAX", V_MAX);
-	//create trackbars and insert them into window
-	//3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
-	//the max value the trackbar can move (eg. H_HIGH), 
-	//and the function that is called whenever the trackbar is moved(eg. on_trackbar)
-	//                                  ---->    ---->     ---->      
-	createTrackbar("H_MIN", trackbarWindowName, &H_MIN, H_MAX, on_trackbar);
-	createTrackbar("H_MAX", trackbarWindowName, &H_MAX, H_MAX, on_trackbar);
-	createTrackbar("S_MIN", trackbarWindowName, &S_MIN, S_MAX, on_trackbar);
-	createTrackbar("S_MAX", trackbarWindowName, &S_MAX, S_MAX, on_trackbar);
-	createTrackbar("V_MIN", trackbarWindowName, &V_MIN, V_MAX, on_trackbar);
-	createTrackbar("V_MAX", trackbarWindowName, &V_MAX, V_MAX, on_trackbar);
+    //create window for trackbars
+    namedWindow(trackbarWindowName, 0);
+    //create memory to store trackbar name on window
+    char TrackbarName[50];
+    sprintf(TrackbarName, "H_MIN", 0);
+    sprintf(TrackbarName, "H_MAX", 256);
+    sprintf(TrackbarName, "S_MIN", 0);
+    sprintf(TrackbarName, "S_MAX", 256);
+    sprintf(TrackbarName, "V_MIN", 0);
+    sprintf(TrackbarName, "V_MAX", 256);
+    //create trackbars and insert them into window
+    //3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
+    //the max value the trackbar can move (eg. H_HIGH),
+    //and the function that is called whenever the trackbar is moved(eg. on_trackbar)
+    //                                  ---->    ---->     ---->
+    createTrackbar("H_MIN", trackbarWindowName, &H_MIN, 256, on_trackbar);
+    createTrackbar("H_MAX", trackbarWindowName, &H_MAX, 256, on_trackbar);
+    createTrackbar("S_MIN", trackbarWindowName, &S_MIN, 256, on_trackbar);
+    createTrackbar("S_MAX", trackbarWindowName, &S_MAX, 256, on_trackbar);
+    createTrackbar("V_MIN", trackbarWindowName, &V_MIN, 256, on_trackbar);
+    createTrackbar("V_MAX", trackbarWindowName, &V_MAX, 256, on_trackbar);
 }
 
 void drawObject(int x, int y, Mat &frame){
@@ -209,6 +210,76 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	return 0;
 }
 
+void compareValues(int value, int &min, int &max){
+    if(value > max)
+        max = value;
+    if(value < min)
+        min = value;
+}
+
+void CompareHSV(Mat HSV){
+    int h_min, s_min, v_min;
+    int h_max, s_max, v_max;
+    h_min = s_min = v_min = 256;
+    h_max = s_max = v_max = 0;
+    
+    for(int x = 0; x < HSV.rows; ++x)
+        for(int y = 0; y < HSV.cols; ++y){
+            Vec3b hsv = HSV.at<Vec3b>(x,y);
+            compareValues(hsv.val[0], h_min, h_max);
+            compareValues(hsv.val[1], s_min, s_max);
+            compareValues(hsv.val[2], v_min, v_max);
+        }
+    
+    H_MIN = h_min;
+    H_MAX = h_max;
+    S_MIN = s_min;
+    S_MAX = s_max;
+    V_MIN = v_min;
+    V_MAX = v_max;
+}
+
+void waitForObject(VideoCapture feed, int seconds){
+    Mat image;
+    Rect test(FRAME_WIDTH/4, FRAME_HEIGHT/4, 2*FRAME_WIDTH/4, 2*FRAME_HEIGHT/4);
+    time_t start, end;
+    
+    
+    for(time(&start), time(&end); difftime (end,start) < seconds; time(&end)){
+        feed.read(image);
+        rectangle(image, test.tl(), test.br(), Scalar(0, 255, 0), 2, 8, 0);
+        double timeLeft = seconds - difftime(end,start);
+        std::cout << timeLeft << std::endl;
+        
+        std::ostringstream oss;
+        oss << "Put object infront of camera Capturing in " << timeLeft << " Seconds";
+        string text = oss.str();
+        putText(image, text , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
+        imshow(windowName, image);
+    }
+}
+
+void setHSV(VideoCapture feed){
+    Mat image, areaOfInterest, HSV;
+    int topLeftX = FRAME_WIDTH/4, topLeftY = FRAME_HEIGHT/4, width = 2*FRAME_WIDTH/4, height = 2*FRAME_HEIGHT/4;
+    
+    
+    waitForObject(feed, 5);
+
+    
+    //we will use this image to set HSV values
+    feed.read(image);
+    std::cout << "Got image, now finding HSV values" << std::endl;
+    
+    //Creates a rectangle of the area we only want to look at in the image
+    areaOfInterest = image(Rect(topLeftX, topLeftY, width, height));
+    
+    //converts rectangle from RGB to HSV
+    cvtColor(areaOfInterest, HSV,CV_BGR2HSV);
+    
+    CompareHSV(HSV);
+}
+
 int main(int argc, char* argv[])
 {
 	//Matrix to store each frame of the webcam feed
@@ -224,13 +295,21 @@ int main(int argc, char* argv[])
 	int x = 0, y = 0;
 	
 	//create slider bars for HSV filtering
-	createTrackbars();
+	//createTrackbars();
 	
 	//video capture object to acquire webcam feed
 	VideoCapture capture;
 	
 	//open capture object at location zero (default location for webcam)
 	capture.open(0);
+    
+    //get HSV values
+    setHSV(capture);
+    
+    //create slider bars for HSV filtering
+    createTrackbars();
+    
+    
 		
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
