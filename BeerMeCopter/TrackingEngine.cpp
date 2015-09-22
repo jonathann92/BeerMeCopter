@@ -5,7 +5,7 @@
 #include <opencv/cv.h>
 #include <pthread.h>
 #include <unistd.h>
-#define NUM_THREADS 3
+#define NUM_THREADS 4
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -242,12 +242,21 @@ void *TrackObject(void *args){
     //start an infinite loop where webcam feed is copied to cameraFeed matrix
     //all of our operations will be performed within this loop
     
-    while (1){
+    std::cout << "I am thread\n";
+    int count = 0;
+    
+    while (1 && count < 5){
         //store image to matrix
         pthread_mutex_lock(&cmutex);
-        capture->read(cameraFeed);
         pthread_mutex_unlock(&cmutex);
+        bool gotFeed = capture->read(cameraFeed);
+        std::cout << "reading from camera\n";
         
+        if(!gotFeed);
+        {
+            std::cout << "cameraFeed Empty\n";
+            ++count;
+        }
         //convert frame from BGR to HSV colorspace
         cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
         
@@ -264,13 +273,13 @@ void *TrackObject(void *args){
         //filtered object
         int trackedObjectArea = trackFilteredObject(x, y, threshold, cameraFeed);
         
-	pthread_mutex_lock(&fmutex);
+        pthread_mutex_lock(&fmutex);
         imshow(windowName2, threshold);
         drawLines(cameraFeed);
         imshow(windowName, cameraFeed);
-       //imshow(windowName1, HSV);
-	waitKey(30);
-	pthread_mutex_unlock(&fmutex);
+        imshow(windowName1, HSV);
+        waitKey(30);
+        pthread_mutex_unlock(&fmutex);
     }
     pthread_exit(NULL);
 }
@@ -280,14 +289,16 @@ int main(int argc, char* argv[])
     //create slider bars for HSV filtering
     createTrackbars();
     
-    //video capture object to acquire webcam feed
-    //VideoCapture *capture;
-    VideoCapture capture;
+    //video capture object to acquire webcam feed and open camera
+    VideoCapture capture(0);
     
-    capture.open(0);
+    if(!capture.isOpened())
+    {
+        std::cout << "!capture\n";
+        return -1;
+    }
     
-    //open capture object at location zero (default location for webcam)
-    //capture->open(0);
+
     
     //set height and width of capture frame
     capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
@@ -297,18 +308,23 @@ int main(int argc, char* argv[])
     pthread_mutex_init(&cmutex, NULL);
     pthread_mutex_init(&fmutex, NULL);
     
+    std::cout << "Starting Threads\n";
+    
     for(int i = 0; i < NUM_THREADS; ++i){
         int rc = pthread_create(&threadid[i], NULL, TrackObject, (void *)&capture);
         if(rc)
             error("pthread_create", rc);
     }
-
+    
+    std::cout << "Created Threads\n";
     
     for(int i =0; i < NUM_THREADS; ++i){
         int rc = pthread_join(threadid[i], NULL);
         if(rc)
             error("pthread_join", rc);
     }
+    std::cout << "joined threads\n";
+    
     
     return 0;
 }
