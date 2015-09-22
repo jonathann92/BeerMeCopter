@@ -104,12 +104,14 @@ void morphOps(Mat &thresh){
 
 	//dilate with larger element so make sure object is nicely visible
 	Mat dilateElement = getStructuringElement(MORPH_RECT, Size(8, 8));
-
+    
+    //morphological opening (remove small objects from the foreground)
 	erode(thresh, thresh, erodeElement);
-	erode(thresh, thresh, erodeElement);
-
 	dilate(thresh, thresh, dilateElement);
+    
+    //morphological closing (fill small holes in the foreground)
 	dilate(thresh, thresh, dilateElement);
+    erode(thresh, thresh, erodeElement);
 }
 
 
