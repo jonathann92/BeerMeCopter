@@ -5,6 +5,9 @@
 #include <opencv/cv.h>
 #include <time.h>
 
+    Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
+
+
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
@@ -18,8 +21,10 @@ int V_MAX = 256;
 const int FRAME_WIDTH = 640;
 const int FRAME_HEIGHT = 480;
 //values for location of lines
-const int CENTER = FRAME_WIDTH/2 + 1;
-const int deltaCenter = 120;
+const int CENTER_WIDTH = FRAME_WIDTH/2 + 1;
+const int CENTER_HEIGHT = FRAME_HEIGHT/2 + 1;
+const int deltaCenterX = 120;
+const int deltaCenterY = 100;
 //max number of objects to be detected in frame
 const int MAX_NUM_OBJECTS = 50;
 //minimum and maximum object area
@@ -44,9 +49,12 @@ string intToString(int number){
 }
 
 void drawLines(Mat &frame) {
-    line(frame, Point(CENTER, FRAME_HEIGHT), Point(CENTER, 0), Scalar(255, 0, 0), 2);
-    line(frame, Point(CENTER - deltaCenter, FRAME_HEIGHT), Point(CENTER - deltaCenter, 0), Scalar(0, 0, 255), 2);
-    line(frame, Point(CENTER + deltaCenter, FRAME_HEIGHT), Point(CENTER + deltaCenter, 0), Scalar(0, 0, 255), 2);
+	//vertical lines
+    line(frame, Point(CENTER_WIDTH - deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH - deltaCenterX, 0), Scalar(0, 0, 255), 2);
+    line(frame, Point(CENTER_WIDTH + deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH + deltaCenterX, 0), Scalar(0, 0, 255), 2);
+	//horizontal lines
+    line(frame, Point(CENTER_HEIGHT - deltaCenterY, FRAME_WIDTH), Point(CENTER_HEIGHT - deltaCenterY, 0), Scalar(0, 0, 255), 2);
+    line(frame, Point(CENTER_HEIGHT + deltaCenterY, FRAME_WIDTH), Point(CENTER_HEIGHT + deltaCenterY, 0), Scalar(0, 0, 255), 2);	
 }
 
 void createTrackbars(){
@@ -241,8 +249,9 @@ void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int &seconds){
 
 void setHSV(VideoCapture &feed){
     Mat image, areaOfInterest, HSV;
-    Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
-    //int topLeftX = FRAME_WIDTH/3, topLeftY = FRAME_HEIGHT/3, width = FRAME_WIDTH/4, height = FRAME_HEIGHT/;
+    //Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
+	int scale = 100;
+	Rect detectionRectangle(Point(CENTER_WIDTH - scale, CENTER_HEIGHT - scale), Point(CENTER_WIDTH + scale, CENTER_HEIGHT + scale));
     
     //wait 5 seconds to capture object to be detected
     waitForObject(feed, detectionRectangle, 5);
