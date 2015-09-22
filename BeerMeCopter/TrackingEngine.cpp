@@ -5,7 +5,7 @@
 #include <opencv/cv.h>
 #include <pthread.h>
 #include <unistd.h>
-#define NUM_THREADS 4
+#define NUM_THREADS 1
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -35,14 +35,6 @@ const string windowName3 = "After Morphological Operations";
 const string trackbarWindowName = "Trackbars";
 
 pthread_mutex_t cmutex, fmutex;
-
-//Matrix to store each frame of the webcam feed
-Mat cameraFeed_G;
-//matrix storage for HSV image
-Mat HSV_G;
-//matrix storage for binary threshold image
-Mat threshold_G;
-
 
 void on_trackbar(int, void*)
 {//This function gets called whenever a
@@ -248,15 +240,17 @@ void *TrackObject(void *args){
     while (1 && count < 5){
         //store image to matrix
         pthread_mutex_lock(&cmutex);
-        pthread_mutex_unlock(&cmutex);
         bool gotFeed = capture->read(cameraFeed);
         std::cout << "reading from camera\n";
+        pthread_mutex_unlock(&cmutex);
+
         
-        if(!gotFeed);
+        if(gotFeed)
         {
             std::cout << "cameraFeed Empty\n";
             ++count;
         }
+        
         //convert frame from BGR to HSV colorspace
         cvtColor(cameraFeed, HSV, COLOR_BGR2HSV);
         
@@ -290,19 +284,26 @@ int main(int argc, char* argv[])
     createTrackbars();
     
     //video capture object to acquire webcam feed and open camera
-    VideoCapture capture(0);
+    VideoCapture capture;
+    capture.open(0);
     
     if(!capture.isOpened())
     {
         std::cout << "!capture\n";
         return -1;
     }
-    
 
     
     //set height and width of capture frame
     capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+    
+    Mat cameraFeed;
+    if(!capture.read(cameraFeed))
+    {
+        std::cout<<"Can't read the first time either\n";
+        return -1;
+    }
     
     pthread_t threadid[NUM_THREADS];
     pthread_mutex_init(&cmutex, NULL);
