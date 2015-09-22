@@ -5,7 +5,8 @@
 #include <opencv/cv.h>
 #include <pthread.h>
 #include <unistd.h>
-#define NUM_THREADS 1
+#include <time.h>
+#define NUM_THREADS 4
 
 using namespace cv;
 //initial min and max HSV filter values.
@@ -20,8 +21,10 @@ int V_MAX = 256;
 const int FRAME_WIDTH = 640;
 const int FRAME_HEIGHT = 480;
 //values for location of lines
-const int CENTER = FRAME_WIDTH/2 + 1;
-const int deltaCenter = 120;
+const int CENTER_WIDTH = FRAME_WIDTH/2 + 1;
+const int CENTER_HEIGHT = FRAME_HEIGHT/2 + 1;
+const int deltaCenterX = 120;
+const int deltaCenterY = 100;
 //max number of objects to be detected in frame
 const int MAX_NUM_OBJECTS = 50;
 //minimum and maximum object area
@@ -33,7 +36,7 @@ const string windowName1 = "HSV Image";
 const string windowName2 = "Thresholded Image";
 const string windowName3 = "After Morphological Operations";
 const string trackbarWindowName = "Trackbars";
-
+//mutexes for protecting IO devices from threads
 pthread_mutex_t cmutex, fmutex;
 
 void on_trackbar(int, void*)
@@ -48,9 +51,12 @@ string intToString(int number){
 }
 
 void drawLines(Mat &frame) {
-    line(frame, Point(CENTER, FRAME_HEIGHT), Point(CENTER, 0), Scalar(255, 0, 0), 2);
-    line(frame, Point(CENTER - deltaCenter, FRAME_HEIGHT), Point(CENTER - deltaCenter, 0), Scalar(0, 0, 255), 2);
-    line(frame, Point(CENTER + deltaCenter, FRAME_HEIGHT), Point(CENTER + deltaCenter, 0), Scalar(0, 0, 255), 2);
+    //vertical lines
+    line(frame, Point(CENTER_WIDTH - deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH - deltaCenterX, 0), Scalar(0, 0, 255), 2);
+    line(frame, Point(CENTER_WIDTH + deltaCenterX, FRAME_HEIGHT), Point(CENTER_WIDTH + deltaCenterX, 0), Scalar(0, 0, 255), 2);
+    //horizontal lines
+    line(frame, Point(FRAME_WIDTH, CENTER_HEIGHT - deltaCenterY), Point(0, CENTER_HEIGHT - deltaCenterY), Scalar(0, 255, 255), 2);
+    line(frame, Point(FRAME_WIDTH, CENTER_HEIGHT + deltaCenterY), Point(0, CENTER_HEIGHT + deltaCenterY), Scalar(0, 255, 255), 2);
 }
 
 void createTrackbars(){
@@ -58,23 +64,23 @@ void createTrackbars(){
     namedWindow(trackbarWindowName, 0);
     //create memory to store trackbar name on window
     char TrackbarName[50];
-    sprintf(TrackbarName, "H_MIN", H_MIN);
-    sprintf(TrackbarName, "H_MAX", H_MAX);
-    sprintf(TrackbarName, "S_MIN", S_MIN);
-    sprintf(TrackbarName, "S_MAX", S_MAX);
-    sprintf(TrackbarName, "V_MIN", V_MIN);
-    sprintf(TrackbarName, "V_MAX", V_MAX);
+    sprintf(TrackbarName, "H_MIN", 0);
+    sprintf(TrackbarName, "H_MAX", 256);
+    sprintf(TrackbarName, "S_MIN", 0);
+    sprintf(TrackbarName, "S_MAX", 256);
+    sprintf(TrackbarName, "V_MIN", 0);
+    sprintf(TrackbarName, "V_MAX", 256);
     //create trackbars and insert them into window
     //3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
     //the max value the trackbar can move (eg. H_HIGH),
     //and the function that is called whenever the trackbar is moved(eg. on_trackbar)
     //                                  ---->    ---->     ---->
-    createTrackbar("H_MIN", trackbarWindowName, &H_MIN, H_MAX, on_trackbar);
-    createTrackbar("H_MAX", trackbarWindowName, &H_MAX, H_MAX, on_trackbar);
-    createTrackbar("S_MIN", trackbarWindowName, &S_MIN, S_MAX, on_trackbar);
-    createTrackbar("S_MAX", trackbarWindowName, &S_MAX, S_MAX, on_trackbar);
-    createTrackbar("V_MIN", trackbarWindowName, &V_MIN, V_MAX, on_trackbar);
-    createTrackbar("V_MAX", trackbarWindowName, &V_MAX, V_MAX, on_trackbar);
+    createTrackbar("H_MIN", trackbarWindowName, &H_MIN, 256, on_trackbar);
+    createTrackbar("H_MAX", trackbarWindowName, &H_MAX, 256, on_trackbar);
+    createTrackbar("S_MIN", trackbarWindowName, &S_MIN, 256, on_trackbar);
+    createTrackbar("S_MAX", trackbarWindowName, &S_MAX, 256, on_trackbar);
+    createTrackbar("V_MIN", trackbarWindowName, &V_MIN, 256, on_trackbar);
+    createTrackbar("V_MAX", trackbarWindowName, &V_MAX, 256, on_trackbar);
 }
 
 void drawObject(int x, int y, Mat &frame){
@@ -177,7 +183,7 @@ int findFilteredObjects(int &x, int &y, vector< vector<Point> > &contours, vecto
     if(area = objectFound(x, y, contours, hierarchy, largestObject)) {
         char* trackingString = "Tracking Object";
         putText(cameraFeed, trackingString, Point(0,50), 2, 1, Scalar(0, 255, 0), 2);
-        std::cout << "area of largest object: " << area << std::endl;
+        //        std::cout << "area of largest object: " << area << std::endl;
         
         //draw object location on screen
         drawObject(x, y, cameraFeed);
@@ -235,20 +241,18 @@ void *TrackObject(void *args){
     //all of our operations will be performed within this loop
     
     std::cout << "I am thread\n";
-    int count = 0;
     
-    while (1 && count < 5){
+    while (1){
         //store image to matrix
         pthread_mutex_lock(&cmutex);
         bool gotFeed = capture->read(cameraFeed);
-        std::cout << "reading from camera\n";
+        //std::cout << "reading from camera\n";
         pthread_mutex_unlock(&cmutex);
-
+        
         
         if(gotFeed)
         {
-            std::cout << "cameraFeed Empty\n";
-            ++count;
+            //   std::cout << "cameraFeed Empty\n";
         }
         
         //convert frame from BGR to HSV colorspace
@@ -278,10 +282,76 @@ void *TrackObject(void *args){
     pthread_exit(NULL);
 }
 
+void compareValues(int value, int &min, int &max){
+    if(value > max)
+        max = value;
+    if(value < min)
+        min = value;
+}
+
+void CompareHSV(Mat &HSV){
+    int h_min, s_min, v_min, h_max, s_max, v_max;
+    h_min = s_min = v_min = 256;
+    h_max = s_max = v_max = 0;
+    
+    for(int x = 0; x < HSV.rows; ++x)
+        for(int y = 0; y < HSV.cols; ++y){
+            Vec3b hsv = HSV.at<Vec3b>(x,y);
+            compareValues(hsv.val[0], h_min, h_max);
+            compareValues(hsv.val[1], s_min, s_max);
+            compareValues(hsv.val[2], v_min, v_max);
+        }
+    
+    H_MIN = h_min;
+    H_MAX = h_max;
+    S_MIN = s_min;
+    S_MAX = s_max;
+    V_MIN = v_min;
+    V_MAX = v_max;
+}
+
+void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int seconds){
+    Mat image;
+    time_t start, end;
+    
+    for(time(&start), time(&end); difftime (end,start) < seconds; time(&end)){
+        if(!feed.read(image)) std::cout << "!read in wait for object\n";
+        rectangle(image, detectionRectangle.tl(), detectionRectangle.br(), Scalar(0, 255, 0), 2, 8, 0);
+        std::ostringstream oss;
+        oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start) << " Seconds";
+        putText(image, oss.str() , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
+        imshow(windowName, image);
+        waitKey(30);
+    }
+}
+
+void setHSV(VideoCapture &feed){
+    Mat image, areaOfInterest, HSV;
+    //Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
+    int scale = 100;
+    Rect detectionRectangle(Point(CENTER_WIDTH - scale, CENTER_HEIGHT - scale), Point(CENTER_WIDTH + scale, CENTER_HEIGHT + scale));
+    
+    //wait 5 seconds to capture object to be detected
+    waitForObject(feed, detectionRectangle, 5);
+    
+    //we will use this image to set HSV values
+    while(!feed.read(image)) std::cout << "Cannot read camera in setHSV\n";
+    std::cout << "Got image, now finding HSV values" << std::endl;
+    
+    //Creates a rectangle of the area we only want to look at in the image
+    areaOfInterest = image(detectionRectangle);
+    
+    //converts rectangle from RGB to HSV
+    cvtColor(areaOfInterest, HSV,CV_BGR2HSV);
+    
+    CompareHSV(HSV);
+}
+
 int main(int argc, char* argv[])
 {
-    //create slider bars for HSV filtering
-    createTrackbars();
+    pthread_t threadid[NUM_THREADS];
+    pthread_mutex_init(&cmutex, NULL);
+    pthread_mutex_init(&fmutex, NULL);
     
     //video capture object to acquire webcam feed and open camera
     VideoCapture capture;
@@ -292,25 +362,19 @@ int main(int argc, char* argv[])
         std::cout << "!capture\n";
         return -1;
     }
-
     
     //set height and width of capture frame
     capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
     capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
     
-    Mat cameraFeed;
-    if(!capture.read(cameraFeed))
-    {
-        std::cout<<"Can't read the first time either\n";
-        return -1;
-    }
+    //get HSV values
+    setHSV(capture);
     
-    pthread_t threadid[NUM_THREADS];
-    pthread_mutex_init(&cmutex, NULL);
-    pthread_mutex_init(&fmutex, NULL);
+    //create slider bars for HSV filtering
+    createTrackbars();
+    
     
     std::cout << "Starting Threads\n";
-    
     for(int i = 0; i < NUM_THREADS; ++i){
         int rc = pthread_create(&threadid[i], NULL, TrackObject, (void *)&capture);
         if(rc)
