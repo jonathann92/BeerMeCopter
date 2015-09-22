@@ -154,19 +154,6 @@ void drawRectangle(int &x, int &y, Mat &cameraFeed, vector< vector<Point> > &con
 	boundRect = boundingRect(Mat(contours_poly));
 	//draws rectangle around largest object
 	rectangle(cameraFeed, boundRect.tl(), boundRect.br(), Scalar(0, 255, 0), 2, 8, 0);
-
-
-	
-	/* Draws rectangle around all detected objects
-	//approximate contours to the polygon
-	vector<vector<Point>> contours_poly(contours.size());
-	vector<Rect> boundRect (contours.size());
-	for(int i = 0; i < contours.size(); ++i) {
-		approxPolyDP(Mat(contours[i]), contours_poly[i], 3, true);
-		boundRect[i] = boundingRect(Mat(contours_poly[i]));
-		rectangle(cameraFeed, boundRect[i].tl(), boundRect[i].br(), Scalar(0, 255, 0), 2, 8, 0);
-	}
-	*/
 }
 
 int findFilteredObjects(int &x, int &y, vector< vector<Point> > &contours, vector<Vec4i> &hierarchy, Mat &cameraFeed) {
@@ -210,16 +197,15 @@ int trackFilteredObject(int &x, int &y, Mat &threshold, Mat &cameraFeed){
 	return 0;
 }
 
-void compareValues(int value, int &min, int &max){
+void compareValues(int &value, int &min, int &max){
     if(value > max)
         max = value;
     if(value < min)
         min = value;
 }
 
-void CompareHSV(Mat HSV){
-    int h_min, s_min, v_min;
-    int h_max, s_max, v_max;
+void CompareHSV(Mat &HSV){
+    int h_min, s_min, v_min, h_max, s_max, v_max;
     h_min = s_min = v_min = 256;
     h_max = s_max = v_max = 0;
     
@@ -239,40 +225,34 @@ void CompareHSV(Mat HSV){
     V_MAX = v_max;
 }
 
-void waitForObject(VideoCapture feed, int seconds){
+void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int &seconds){
     Mat image;
-    Rect test(FRAME_WIDTH/4, FRAME_HEIGHT/4, 2*FRAME_WIDTH/4, 2*FRAME_HEIGHT/4);
     time_t start, end;
-    
     
     for(time(&start), time(&end); difftime (end,start) < seconds; time(&end)){
         feed.read(image);
-        rectangle(image, test.tl(), test.br(), Scalar(0, 255, 0), 2, 8, 0);
-        double timeLeft = seconds - difftime(end,start);
-        std::cout << timeLeft << std::endl;
-        
+        rectangle(image, detectionRectangle.tl(), detectionRectangle.br(), Scalar(0, 255, 0), 2, 8, 0);
         std::ostringstream oss;
-        oss << "Put object infront of camera Capturing in " << timeLeft << " Seconds";
-        string text = oss.str();
-        putText(image, text , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
+        oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start); << " Seconds";
+        putText(image, oss.str() , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
         imshow(windowName, image);
     }
 }
 
-void setHSV(VideoCapture feed){
+void setHSV(VideoCapture &feed){
     Mat image, areaOfInterest, HSV;
-    int topLeftX = FRAME_WIDTH/4, topLeftY = FRAME_HEIGHT/4, width = 2*FRAME_WIDTH/4, height = 2*FRAME_HEIGHT/4;
+    Rect detectionRectangle(FRAME_WIDTH/3, FRAME_HEIGHT/3, FRAME_WIDTH/3, FRAME_HEIGHT/3);
+    //int topLeftX = FRAME_WIDTH/3, topLeftY = FRAME_HEIGHT/3, width = FRAME_WIDTH/4, height = FRAME_HEIGHT/;
     
-    
-    waitForObject(feed, 5);
-
+    //wait 5 seconds to capture object to be detected
+    waitForObject(feed, detectionRectangle, 5);
     
     //we will use this image to set HSV values
     feed.read(image);
     std::cout << "Got image, now finding HSV values" << std::endl;
     
     //Creates a rectangle of the area we only want to look at in the image
-    areaOfInterest = image(Rect(topLeftX, topLeftY, width, height));
+    areaOfInterest = image(detectionRectangle);
     
     //converts rectangle from RGB to HSV
     cvtColor(areaOfInterest, HSV,CV_BGR2HSV);
@@ -294,9 +274,6 @@ int main(int argc, char* argv[])
 	//x and y values for the location of the object
 	int x = 0, y = 0;
 	
-	//create slider bars for HSV filtering
-	//createTrackbars();
-	
 	//video capture object to acquire webcam feed
 	VideoCapture capture;
 	
@@ -308,12 +285,11 @@ int main(int argc, char* argv[])
     
     //create slider bars for HSV filtering
     createTrackbars();
-    
-    
 		
 	//set height and width of capture frame
 	capture.set(CV_CAP_PROP_FRAME_WIDTH, FRAME_WIDTH);
 	capture.set(CV_CAP_PROP_FRAME_HEIGHT, FRAME_HEIGHT);
+    
 	//start an infinite loop where webcam feed is copied to cameraFeed matrix
 	//all of our operations will be performed within this loop
 	while (1){
