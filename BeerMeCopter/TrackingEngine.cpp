@@ -244,6 +244,7 @@ void waitForObject(VideoCapture &feed, Rect &detectionRectangle, int seconds){
         oss << "Put object infront of camera Capturing in " << seconds - difftime(end,start) << " Seconds";
         putText(image, oss.str() , Point(0,50), 2, .6, Scalar(0, 255, 0), 2);
         imshow(windowName, image);
+	waitKey(1);
     }
 }
 
@@ -333,9 +334,9 @@ int main(int argc, char* argv[])
 		imshow(windowName, cameraFeed);
 		//imshow(windowName1, HSV);
 
-		//delay 30ms so that screen can refresh.
+		//delay 1ms so that screen can refresh.
 		//image will not appear without this waitKey() command
-		waitKey(30);
+		waitKey(1);
 	}
 	return 0;
 }
