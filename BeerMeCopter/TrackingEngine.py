@@ -30,7 +30,7 @@ windowName2 = "Thresholded Image"
 windowName3 = "After Morphological Operations"
 trackbarWindowName = "Trackbars"
 
-def main()
+def main():
 	capture = cv2.VideoCapture(0)
 	
 	while(True):
