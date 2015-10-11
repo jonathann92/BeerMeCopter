@@ -27,7 +27,7 @@ MAX_OBJECT_AREA = FRAME_HEIGHT*FRAME_WIDTH / 1.5
 windowName = "Original Image"
 windowName1 = "HSV Image"
 windowName2 = "Thresholded Image"
-windowName3 = "After Morphological Operations""
+windowName3 = "After Morphological Operations"
 trackbarWindowName = "Trackbars"
 
 def main()
